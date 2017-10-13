@@ -211,7 +211,7 @@ function configure_web_server {
   client_max_body_size 20m;
   client_body_buffer_size 128k;
 
-  rewrite ^ https://$server_name\$request_uri? permanent;
+  rewrite ^ https://\$server_name\$request_uri? permanent;
 }
 
 server {
