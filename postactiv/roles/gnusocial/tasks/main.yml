@@ -117,11 +117,35 @@
     src: "install_postactiv.sh"
     dest: "/tmp/"
     mode: 0755
+
+- name: Run postActiv install script
+  command: "/tmp/install_postactiv.sh {{ mariadb_password }} {{ db_admin_user }} {{ db_admin_password }} {{ social_admin_user }} {{ social_admin_password }} {{ social_domain }} {{ tls_my_email }}"
+  become: yes
+
+- name: Make plugins folder in postactiv/local/plugins
+  file:
+    path: /var/www/postactiv/local/plugins
+    state: directory
+
+- name: Clone Qvitter plugin git to postactiv/local/plugins
+  git:
+    repo: 'http://git.gnu.io/h2p/Qvitter'
+    dest: /var/www/postactiv/local/plugins/Qvitter
+    version: '3666f7380e1ba388eec5e3f405780775f2f4dbc2'
   tags:
     - test
 
-- name: Run postActiv install script
-  command: "/tmp/install_postactiv.sh {{ mariadb_password }} {{ db_admin_user }} {{ db_admin_password }} {{ social_admin_user }} {{ social_admin_password }} {{ social_domain }}"
+- name: Copy Qvitter install script
+  copy:
+    src: "install_qvitter.sh"
+    dest: "/tmp/"
+    mode: 0755
+  tags:
+    - test
+
+- name: Run Qvitter install script
+  command: "/tmp/install_qvitter.sh"
   become: yes
   tags:
     - test
+

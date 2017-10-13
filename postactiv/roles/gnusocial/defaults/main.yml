@@ -46,4 +46,6 @@ db_admin_password: 'dbpassword'
 
 social_admin_user: 'socialadmin'
 social_admin_password: 'socialpassword'
-social_domain: 'postactiv.local'
+social_domain: 'yourdomain.tld'
+
+tls_my_email: 'email@yourdomain.tld'
