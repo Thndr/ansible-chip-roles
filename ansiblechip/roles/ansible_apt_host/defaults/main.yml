@@ -1,0 +1,13 @@
+---
+
+user: "ansichip"
+
+urllistname: "apt_url_list"
+pkglistname: "packagelist"
+
+debrepo: "/var/local-deb-repo"
+
+software_packages:
+  - ansible
+  - git
+  - dpkg-dev

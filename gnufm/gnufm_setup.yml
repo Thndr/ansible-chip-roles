@@ -1,0 +1,86 @@
+---
+- hosts: social
+  become: yes
+  vars:
+    mariadb_password: "sqlpassword"
+    db_admin_user: "fmdbadmin"
+    db_admin_password: "fmdbpassword"
+    tls_domain: "yourdomain.tld"
+    tls_email: "email@yourdomain.tld"
+  tasks:
+    - name: Install sendmail for account registration
+      package:
+        name: sendmail
+        state: present
+
+    - name: Clone GNUFM to TMP
+      git:
+        repo: 'https://github.com/foocorp/gnu-fm'
+        dest: /tmp/gnufm
+
+    - name: Clone libreFM theme to TMP
+      git:
+        repo: 'http://git.gnu.io/foocorp/librefm.git'
+        dest: /tmp/librefm
+
+    - name: verify /var/www/ exists
+      file:
+        path: "/var/www/"
+        state: directory
+
+    - name: Add Gnufm and Gnukebox
+      file:
+        path: "/var/www/{{ item }}"
+        state: directory
+      with_items:
+        - gnufm
+        - gnukebox
+
+    - name: Copy GNUFM DB install script
+      copy:
+        src: "{{ item }}"
+        dest: "/tmp/"
+        mode: 0755
+      with_items:
+        - install_gnufm.sh
+        - install_php_composer.sh
+        - setup_librefm.sh
+        - install_tls_certs.sh
+
+    - name: Run PHP Composer install
+      command: "/tmp/install_php_composer.sh"
+      become: yes
+
+    - name: Setup GnuFM/LibreFM
+      command: "/tmp/setup_librefm.sh"
+      become: yes
+
+    - name: Run the GnuFM DB install script
+      command: "/tmp/install_gnufm.sh {{ mariadb_password }} {{ db_admin_user }} {{ db_admin_password }}"
+      become: yes
+
+    - name: Get the TLS SSL Cert for {{ tls_domain }}
+      command: "/tmp/install_tls_certs.sh {{ tls_domain }} {{ tls_email }}"
+      become: yes
+
+
+    - name: Copy LasttoLibre / libretolibre import/export script
+      copy:
+        src: "{{ item }}"
+        dest: "/tmp/"
+        mode: 0755
+      with_items:
+        - libreimport2.py
+        - libreimport.py
+        - scrobble.py
+        - scrobble2.py
+        - lastexport.py
+      tags:
+        - test
+
+    - debug:
+        msg:
+          - "No CLI php installs, have to go to the install.php within a browser to finish for gnukebox and then gnufm. Once installed be sure to change the gnufm config.php default theme to 2014 to mirror libre.fm's style."
+          - "If emails send slowly for GnuFM modify your local /etc/hosts to have '127.0.0.1 hostname hostname.localdomain' as sendmail may just not like your hostname not being a domain."
+      tags:
+        - test

@@ -1,0 +1,49 @@
+---
+
+webhost_package: nginx
+
+software_packages:
+  - apt-transport-https
+  - software-properties-common
+  - git
+  - curl
+
+php_7_packages:
+  - php-gettext
+  - php7.0-curl
+  - php7.0-gd
+  - php7.0-mysql
+  - php-memcached
+  - php7.0-intl
+  - php-xml-parser
+  - php7.0-fpm
+
+php_5_packages:
+  - php-gettext
+  - php5-curl
+  - php5-gd
+  - php5-mysql
+  - php5-memcached
+  - php5-intl
+  - php-xml-parser
+  - php5-fpm
+
+stretch_repos:
+  - 'deb http://ftp.us.debian.org/debian/ stretch-updates main'
+  - 'deb-src http://ftp.us.debian.org/debian/ stretch-updates main'
+  - 'deb http://ftp.us.debian.org/debian/ stretch-backports main'
+  - 'deb-src http://ftp.us.debian.org/debian/ stretch-backports main'
+
+postactiv_archive: 'archive_master.tar.gz'
+
+postactiv_extracted: 'postActiv-master-ebc4e4a8b8a1dbbb0f7127cd2019d133be59b453'
+
+
+mariadb_password: 'sqlpassword'
+
+db_admin_user: 'dbadmin'
+db_admin_password: 'dbpassword'
+
+social_admin_user: 'socialadmin'
+social_admin_password: 'socialpassword'
+social_domain: 'postactiv.local'

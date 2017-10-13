@@ -1,0 +1,6 @@
+#!/bin/sh
+sudo apt-get clean
+sudo apt-get autoclean
+sudo apt-get update
+sudo dpkg --get-selections | sed 's/[\t]install//g' | sed 's/^[ \t]*//;s/[ \t]*$//' > /tmp/packagelist
+apt-get -y install --reinstall --print-uris $(< /tmp/packagelist) | grep 'http' | tr -d '' | awk '{print$1}' | grep ^\' | cut -d\' -f2 > /tmp/apt_url_list

@@ -1,0 +1,176 @@
+---
+
+# Install Packages
+
+- name: Add the Ansible Apt repository
+  apt_repository:
+    repo: deb http://ppa.launchpad.net/ansible/ansible/ubuntu trusty main
+    state: present
+    filename: 'ansible'
+    update_cache: no
+  register: ansible_apt
+
+- name: Add an apt key by id from a keyserver
+  apt_key:
+    keyserver: keyserver.ubuntu.com
+    id: 93C4A3FD7BB9C367
+    state: present
+
+- name: Runs "update_cache=yes" if the Ansible Apt repo was added.
+  package:
+    update_cache: yes
+  when: ansible_apt.changed == True
+
+- name: Only run "update_cache=yes" if the last one is more than 3600 seconds ago
+  package:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Install Software packages
+  package:
+    name: "{{ item }}"
+    state: installed
+  with_items:  "{{ software_packages }}"
+  tags:
+    - install_standard
+
+
+# Install Package URL Generator script
+- name: Install the URL Generator script
+  copy:
+    src: apt_url_gen
+    dest: /usr/local/bin
+    owner: root
+    group: root
+    mode: 0755
+  tags:
+    - apt-repo
+
+# Verify if USB mount point /media/usb1 exists
+- name: Verify if /media/usb1 exists
+  stat:
+    path: "/media/usb1/"
+  register: usb1
+  tags:
+    - usb_mount
+
+# Create USB mount point /media/usb1 if it does not exist
+- name: Create /media/usb1 if it does not exist.
+  file:
+    path: /media/usb1
+    state: directory
+    mode: 0755
+  when: usb1.stat.isdir is not defined
+  tags:
+    - usb_mount
+
+- name: Add mounting fstab for /dev/sda1 to /media/usb1
+  mount:
+    path: /media/usb1/
+    src: /dev/sda1
+    fstype: vfat
+    opts: "user,umask=000,utf8"
+    state: present
+  tags:
+    - usb_mount
+
+- name: Add /media/usb1/swap.file to fstab
+  mount: 
+    name: none
+    src: /media/usb1/swap.file
+    fstype: swap 
+    opts: sw
+    passno: 0
+    dump: 0
+    state: present
+  tags:
+    - usb_mount
+
+
+# Configure Ansible folder
+- name: Link /home/{{ user }}/ansible to /media/usb1/ansible/
+  file:
+    state: link
+    path: "/home/{{ user }}/ansible"
+    src: "/media/usb1/ansible/"
+    force: yes
+  tags:
+    - ansible
+    - usb_mount
+
+# Configure local repo folder
+- name: Link {{ debrepo }} to /media/usb1/apt-repo/
+  file:
+    state: link
+    path: "{{ debrepo }}"
+    src: "/media/usb1/apt-repo/"
+    force: yes
+  tags:
+    - apt-repo
+    - usb_mount
+
+- block:
+# Run the URL Generator Script
+#    - name: Run the URL Generator script
+#    command: "/usr/local/bin/apt_url_gen"
+
+# Apt_Url_List
+    - name: Verify if /tmp/apt_url_list exists
+      stat:
+        path: "/tmp/apt_url_list"
+      register: url_list
+
+    - name: Copy /tmp/apt_url_list from tmp to /home/{{ user }}/{{ urllistname }}
+      copy:
+        src: /tmp/apt_url_list
+        dest: "/home/{{ user }}/{{ urllistname }}"
+        remote_src: yes
+      when: url_list.stat.exists == True
+
+    - name: Remove /tmp/apt_url_list
+      file: path=/tmp/apt_url_list state=absent
+
+# Packagelist
+    - name: Verify if /tmp/packagelist exists and then move it to /home/{{ user }}/{{ pkglistname }}
+      stat:
+        path: "/tmp/packagelist"
+      register: pkg_list
+
+    - name: Copy /tmp/packagelist from tmp to /home/{{ user }}/{{ pkglistname }}
+      copy:
+        src: /tmp/packagelist
+        dest: "/home/{{ user }}/{{ pkglistname }}"
+        remote_src: yes
+      when: pkg_list.stat.exists == True
+
+    - name: Remove /tmp/packagelist
+      file: path=/tmp/packagelist state=absent
+
+  tags:
+    - apt-repo
+    - generate
+
+- block:
+    - name: Verify if there is a local repository
+      stat:
+        path: "/var/local-deb-repo/Packages.gz"
+      register: localrepo
+
+    - name: Add local repository to /etc/apt/sources.list
+      apt_repository:
+        repo: "deb file:/var/local-deb-repo/ ./"
+        filename: "local_repo"
+        update-cache: no
+        state: present
+      when: localrepo.stat.exists == True
+
+    - name: Remove repository from /etc/apt/sources.list if there is no local repository
+      apt_repository:
+        repo: "deb file:/var/local-deb-repo/ ./"
+        filename: "local_repo"
+        update-cache: no
+        state: absent
+      when: localrepo.stat.exists == False
+
+  tags:
+    - apt-repo

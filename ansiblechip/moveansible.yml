@@ -1,0 +1,9 @@
+---
+- hosts: ansible
+  become: yes
+  tasks:
+    - name: 
+      copy:
+        src: "/media/usb1/ansible"
+        dest: "/tmp/ansible"
+

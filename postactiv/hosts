@@ -1,0 +1,16 @@
+[chip]
+
+[chip:vars]
+ansible_connection=ssh
+ansible_ssh_user=chip
+user=chip
+
+[social]
+postactiv.local
+
+[social:vars]
+ansible_connection=ssh
+ansible_ssh_user=social
+user=social
+
+

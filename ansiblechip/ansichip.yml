@@ -1,0 +1,5 @@
+---
+- hosts: ansible
+  become: yes
+  roles:
+  - ansible_apt_host
