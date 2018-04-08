@@ -1,0 +1,47 @@
+  - php7.0-fpm
+---
+
+webhost_package: nginx
+
+software_packages:
+  - apt-transport-https
+  - software-properties-common
+  - git
+  - curl
+  - mailutils
+  - sendmail
+
+
+php_7_packages:
+  - php-gettext
+  - php7.0-cli
+  - php7.0-curl
+  - php7.0-fpm
+	  - php7.0-gd
+  - php7.0-mysql
+  - php-memcached
+  - php7.0-intl
+  - php-xml-parser
+  - php7.0-zip
+  - php7.0-mbstring
+  - php7.0-xml
+  - php7.0-mcrypt
+
+
+stretch_repos:
+  - 'deb http://ftp.us.debian.org/debian/ stretch-updates main'
+  - 'deb-src http://ftp.us.debian.org/debian/ stretch-updates main'
+  - 'deb http://ftp.us.debian.org/debian/ stretch-backports main'
+  - 'deb-src http://ftp.us.debian.org/debian/ stretch-backports main'
+
+
+mariadb_password: 'sqlpassword'
+
+db_admin_user: 'dbadmin'
+db_admin_password: 'dbpassword'
+
+social_admin_user: 'socialadmin'
+social_admin_password: 'socialpassword'
+social_domain: 'yourdomain.tld'
+
+tls_my_email: 'email@yourdomain.tld'

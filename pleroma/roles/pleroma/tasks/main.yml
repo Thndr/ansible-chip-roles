@@ -1,0 +1,163 @@
+---
+# Install Packages
+- name: Add the Earlang apt key for Elixer
+  apt_key:
+    url: http://packages.erlang-solutions.com/debian/erlang_solutions.asc
+    state: present
+
+- name: Add the Earlang apt-repo for Elixer
+  apt_repository:
+    repo: deb http://packages.erlang-solutions.com/debian jessie contrib
+    state: present
+    filename: erlang-solutions
+    update_cache: yes
+
+- name: Install Jessie-backport Software packages
+  package:
+    name: "{{ item }}"
+    state: installed
+    default_release: jessie-backports
+    update_cache: no
+  with_items:  "{{ software_back_packages }}"
+
+- name: Install Software packages
+  package:
+    name: "{{ item }}"
+    state: installed
+    update_cache: no
+  with_items:  "{{ software_packages }}"
+
+- name: Install pyexpect
+  pip:
+    name: pexpect
+
+- name: Create the pleroma user
+  user:
+    name: pleroma
+    groups:
+      - sudo
+    state: present
+
+- name: Clone pleroma to the {{pleroma_dir}} folder.
+  git:
+    repo: https://git.pleroma.social/pleroma/pleroma
+    dest: "{{ pleroma_dir }}"
+  become: yes
+  become_user: pleroma
+
+- name: Run mix as pleroma
+  command: "{{ item }}"
+  become: yes
+  become_user: pleroma
+  with_items:
+    - "mix local.hex --force"
+    - "mix local.rebar --force"
+    - "mix deps.get"
+  args:
+    chdir: "{{ pleroma_dir }}"
+
+- name: Compile pleroma and input settings via mix
+  become: yes
+  become_user: pleroma
+  expect:
+    command: mix generate_config
+    responses:
+      (?i)What is your domain name.*: "{{ social_domain }}"
+      (?i)What is the name of your instance.*: "{{ social_name }}"
+      (?i)What's your admin email address.*: "{{ social_email }}"
+      (?i)Do you want to activate the mediaproxy.*: "N"
+    timeout: 2400
+  args:
+    chdir: "{{ pleroma_dir }}"
+
+- name: Move the config file to the right place/name
+  command: mv config/generated_config.exs config/prod.secret.exs
+  args:
+    chdir: "{{ pleroma_dir }}"
+
+- name: setup postgres pleroma db
+  become: yes
+  become_user: postgres
+  command: psql -f config/setup_db.psql
+  args:
+    chdir: "{{ pleroma_dir }}"
+
+- name: Run DB migration
+  become: yes
+  become_user: pleroma
+  command: "{{ item }}"
+  with_items:
+    - mix ecto.migrate
+  environment:
+    MIX_ENV: "{{ mix_env }}"
+  args:
+    chdir: "{{ pleroma_dir }}"
+
+- name: Assign ownership to pleroma
+  file:
+    path: "{{ pleroma_dir }}"
+    state: directory
+    owner: pleroma
+    group: pleroma
+    recurse: yes
+  become: yes
+
+- name: Remove Apache2
+  package:
+    name: apache2
+    state: absent
+    purge: yes
+    update_cache: no
+  when: webhost_package != "apache2"
+
+- name: Install {{ webhost_package }}
+  package:
+    name: "{{ webhost_package }}"
+    state: installed
+    default_release: jessie-backports
+    update_cache: no
+
+- name: Stop {{ webhost_package }}
+  service:
+    name: "{{ webhost_package }}"
+    state: stopped
+
+- name: Copy over nginx config
+  template:
+    src: "pleroma.nginx.j2"
+    dest: "/etc/nginx/sites-enabled/pleroma.nginx"
+
+- name: Copy over pleroma systemd service file
+  template:
+    src: "pleroma.service.j2"
+    dest: "/usr/lib/systemd/system/pleroma.service"
+
+- name: Create SSL certificate
+  shell: letsencrypt certonly -n --agree-tos --standalone --email "{{ tls_my_email }}" -d "{{ social_domain }}"
+  become: yes
+  args:
+    chdir: "{{ pleroma_dir }}"
+
+- name: Renew LetsEncrypt cron
+  cron:
+    name: "letsencrypt renew"
+    minute: "{{ letsencrypt_renew_hr }}"
+    hour: "{{ letsencrypt_renew_min }}"
+    job: "{{ letsencrypt_cmd }} renew {{ letsencrypt_renew_parms }}"
+
+- name: Restart cron
+  service:
+    name: "{{ webhost_package }}"
+    state: restarted
+
+- name: Enable and start the Pleroma service
+  service:
+    name: pleroma
+    enabled: yes
+    state: started
+
+- name: Start {{ webhost_package }}
+  service:
+    name: "{{ webhost_package }}"
+    state: started
+

@@ -1,0 +1,7 @@
+---
+- hosts: social
+  become: yes
+  vars:
+    php_ver: 7
+  roles:
+    - hubzilla

@@ -1,0 +1,8 @@
+---
+- hosts: chip
+  become: yes
+  roles:
+    - pleroma
+
+# need to enable world readable temp files for the mix commands to run as the pleroma user
+# assumes Debian Jessie for install.

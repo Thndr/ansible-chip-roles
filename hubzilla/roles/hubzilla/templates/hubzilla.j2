@@ -1,0 +1,55 @@
+server {
+  listen 80;
+  server_name {{ social_domain }};
+  index index.php;
+  root /var/www/hubzilla;
+  rewrite ^ https://{{ social_domain }}$request_uri? permanent;
+}
+
+server {
+  listen 443 ssl;
+  server_name {{ social_domain }};
+  ssl on;
+  ssl_protocols TLSv1.2;
+  ssl_ciphers HIGH:!MEDIUM:!LOW:!aNULL:!NULL:!SHA;
+  ssl_prefer_server_ciphers on;
+  ssl_session_timeout 5m;
+  ssl_certificate     /etc/letsencrypt/live/{{ social_domain }}/fullchain.pem;
+  ssl_certificate_key /etc/letsencrypt/live/{{ social_domain }}/privkey.pem;
+  fastcgi_param HTTPS on;
+  index index.php;
+  charset utf-8;
+  root /var/www/hubzilla;
+  access_log /var/log/nginx/hubzilla.log;
+  client_max_body_size 20m;
+  client_body_buffer_size 128k;
+  location / {
+    if ($is_args != "") {
+        rewrite ^/(.*) /index.php?q=$uri&$args last;
+    }
+    rewrite ^/(.*) /index.php?q=$uri last;
+  }
+  location ^~ /.well-known/ {
+    allow all;
+    rewrite ^/(.*) /index.php?q=$uri&$args last;
+  }
+  location ~* \.(jpg|jpeg|gif|png|ico|css|js|htm|html|map|ttf|woff|woff2|svg)$ {
+    expires 30d;
+    try_files $uri /index.php?q=$uri&$args;
+  }
+  location ~* \.(tpl|md|tgz|log|out)$ {
+    deny all;
+  }
+  location ~* \.php$ {
+    try_files $uri =404;
+    # NOTE: You should have "cgi.fix_pathinfo = 0;" in php.ini
+    fastcgi_split_path_info ^(.+\.php)(/.+)$;
+    fastcgi_pass unix:/var/run/php5-fpm.sock;
+    include fastcgi_params;
+    fastcgi_index index.php;
+    fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+  }
+    location ~ /store {
+    deny  all;
+    }
+}

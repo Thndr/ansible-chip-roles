@@ -1,0 +1,201 @@
+---
+# Install Packages
+- name: PHP 7 stretch install
+  block:
+  - name: Remove NTC's repo from the default sheet
+    apt_repository:
+      repo: deb http://opensource.nextthing.co/chip/debian/repo jessie main
+      state: absent
+      update_cache: no
+
+  - name: Readd NTC's repo
+    apt_repository:
+      repo: deb http://opensource.nextthing.co/chip/debian/repo jessie main
+      state: present
+      filename: 'ntc-repo'
+      update_cache: no
+
+  - name: Replace all instances of 'jessie' with 'stretch' in the new copy
+    replace:
+      path: /etc/apt/sources.list
+      regexp: 'jessie'
+      replace: 'stretch'
+      backup: no
+
+  - name: Update package list to stretch
+    package:
+      update_cache: yes
+
+  when: php_ver == 7
+  tags:
+    - php7
+
+- name: Install Software packages
+  package:
+    name: "{{ item }}"
+    state: installed
+    update_cache: no
+  with_items:  "{{ software_packages }}"
+
+- name: Install Certbot/LetsEncrypt
+  package:
+    name: certbot
+    state: installed
+    default_release: jessie-backports
+    update_cache: no
+
+- name: Install PHP5 packages
+  package:
+    name: "{{ item }}"
+    state: installed
+    update_cache: no
+  with_items:  "{{ php_5_packages }}"
+  when: php_ver == 5
+  tags:
+    - php5
+
+- name: Install PHP7 packages
+  package:
+    name: "{{ item }}"
+    state: installed
+    update_cache: no
+  with_items:  "{{ php_7_packages }}"
+  when: php_ver == 7
+  tags:
+    - php7
+
+- name: Clone Hubzilla to webdirectory folder.
+  git:
+    repo: https://github.com/redmatrix/hubzilla
+    dest: "{{ hubzilla_dir }}"
+
+- name: Set ownage to www-data and mode
+  file:
+    path: "{{ item }}"
+    state: directory
+    group: www-data
+    mode: "g+w"
+  with_items:
+    - "{{ hubzilla_dir }}"
+    - "{{ hubzilla_dir }}/addon"
+    - "{{ hubzilla_dir }}/extend"
+    - "{{ hubzilla_dir }}/view/theme"
+    - "{{ hubzilla_dir }}/widget"
+    - "{{ hubzilla_dir }}/store/[data]/smarty3"
+
+- name: Set ownage to www-data
+  file:
+    path: "{{ hubzilla_dir }}/store"
+    group: www-data
+    state: directory
+    recurse: yes
+
+- name: Set ownage to www-data
+  file:
+    path: "{{ item }}"
+    group: www-data
+    mode: "g+w"
+    state: touch
+  with_items:
+    - "{{ hubzilla_dir }}/.htlog"
+    - "{{ hubzilla_dir }}/.htconfig.php"
+
+#use util/update_addon_repo official to update
+- name: Add Hubzilla addons
+  shell: "util/add_addon_repo https://github.com/redmatrix/hubzilla-addons.git official"
+  args:
+    chdir: "{{ hubzilla_dir }}"
+
+- name: Remove Apache2
+  package:
+    name: apache2
+    state: absent
+    purge: yes
+    update_cache: no
+  when: webhost_package != "apache2"
+
+- name: Install {{ webhost_package }}
+  package:
+    name: "{{ webhost_package }}"
+    state: installed
+    update_cache: no
+
+- name: Copy MariaDB install script
+  copy:
+    src: "install_mariadb.sh"
+    dest: "/tmp/"
+    mode: 0755
+  tags:
+    - debug
+
+- name: Run MariaDB install script
+  command: "/tmp/install_mariadb.sh {{ mariadb_password }} {{ db_name }} {{ db_admin_user }} {{ db_admin_password }}"
+  become: yes
+  tags:
+    - debug
+
+- name: Enable PHP modules
+  command: "{{ item }}"
+  become: yes
+  with_items:
+    - php5enmod mcrypt
+#    - php5enmod zip
+
+- name: Copy over hubzilla nginx config to available sites
+  template:
+    src: "hubzilla.j2"
+    dest: "/etc/nginx/sites-available/hubzilla"
+
+- name: Link hubzilla nginx config to enabled sites
+  file:
+    src: "/etc/nginx/sites-available/hubzilla"
+    dest: "/etc/nginx/sites-enabled/hubzilla"
+    state: link
+
+- name: Install LetsEncrypt
+  package:
+    name: letsencrypt
+    state: installed
+    update_cache: no
+
+- name: Stop the webserver
+  service:
+    name: "{{ item }}"
+    state: stopped
+  with_items:
+    - php5-fpm
+    - nginx
+
+- name: Create SSL certificate
+  shell: letsencrypt certonly -n --agree-tos --renew-by-default --standalone --email "{{ tls_my_email }}" -d "{{ social_domain }}"
+  become: yes
+  args:
+    chdir: "{{ hubzilla_dir }}"
+
+- name: Renew LetsEncrypt cron
+  cron:
+    name: "letsencrypt renew"
+    minute: "{{ letsencrypt_renew_hr }}"
+    hour: "{{ letsencrypt_renew_min }}"
+    job: "{{ letsencrypt_cmd }} renew {{ letsencrypt_renew_parms }}"
+
+- name: Setup hubzilla cronjob
+  cron:
+    name: "hubzilla"
+    user: "www-data"
+    minute: "*/10"
+    job: "cd {{ hubzilla_dir }}; /usr/bin/php include/poller.php"
+    cron_file: "hubzilla"
+
+- name: Start the webserver
+  service:
+    name: "{{ item }}"
+    state: started
+  with_items:
+    - nginx
+    - php5-fpm
+
+- name: Restart cron
+  service:
+    name: cron
+    state: restarted

@@ -1,0 +1,43 @@
+---
+
+webhost_package: nginx
+
+software_back_packages:
+  - letsencrypt
+  - postgresql-9.6
+  - postgresql-contrib-9.6
+
+software_packages:
+  - apt-transport-https
+  - software-properties-common
+  - git
+  - build-essential
+  - openssl
+  - elixir
+  - erlang-dev 
+  - erlang-parsetools
+  - erlang-xmerl
+
+postgresql_password: 'sqlpassword'
+
+db_name: 'dbname'
+db_admin_user: 'dbadmin'
+db_admin_password: 'dbpassword'
+
+#social_admin_user: 'socialadmin'
+#social_admin_password: 'socialpassword'
+social_domain: 'yourdomain.tld'
+social_email: 'email@yourdomain.tld'
+social_name: 'pleroma'
+
+tls_my_email: 'email@yourdomain.tld'
+
+pleroma_dir: '/home/pleroma/pleroma'
+
+#SSL cert, might need to redo later
+letsencrypt_cmd: "letsencrypt"
+letsencrypt_renew_hr: "7"
+letsencrypt_renew_min: "0"
+letsencrypt_renew_parms: "--noninteractive --quiet --no-self-upgrade --post-hook 'systemctl reload {{ webhost_package }}.service'"
+
+mix_env: prod
