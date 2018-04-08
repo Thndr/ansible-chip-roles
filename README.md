@@ -2,6 +2,12 @@
 This repository is to store the different ansible configuration/roles that I make
 
 
+# /hubzilla/
+Hubzilla is a federated social website system based off from the concept of a nomadic identity.
+
+# /pleroma/
+Pleroma is an Ostatus (GnuSocial) compatible microblogging platform with native modern ActivityPub support to support newer social network federations
+
 # /postactive/
 postActive is a GNUSocial fork with more recent updates.
 For this configuration you will need to download the tar.gz file from the postactive git at: https://git.postactiv.com/postActiv/postActiv and place it within the files folder, and if it's a different commit you will need to change the extracted folder name within the configuration too.
