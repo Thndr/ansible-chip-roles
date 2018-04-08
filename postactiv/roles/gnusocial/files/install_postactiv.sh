@@ -14,7 +14,7 @@ MY_EMAIL_ADDRESS=$7
 function install_mariadb {
   export DEBIAN_FRONTEND=noninteractive
   echo "mariadb-server-10.0 mysql-server/root_password password $MARIADB_PASSWORD" | debconf-set-selections
-  echo "mmariadb-server-10.0 mysql-server/root_password_again password $MARIADB_PASSWORD" | debconf-set-selections
+  echo "mariadb-server-10.0 mysql-server/root_password_again password $MARIADB_PASSWORD" | debconf-set-selections
 
   #echo "mariadb-server mariadb-server/root_password password $MARIADB_PASSWORD" | debconf-set-selections
   #echo "mariadb-server mariadb-server/root_password_again password $MARIADB_PASSWORD" | debconf-set-selections
